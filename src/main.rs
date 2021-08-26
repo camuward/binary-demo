@@ -21,17 +21,22 @@ fn main() {
 
         let per_line: usize = {
             // get terminal width or default to 80 cols
-            let cols = terminal_size::terminal_size_using_handle({
+            let cols = {
                 #[cfg(target_os = "windows")]
                 {
-                    std::os::windows::io::AsRawHandle::as_raw_handle(&handle)
+                    terminal_size::terminal_size_using_handle(
+                        std::os::windows::io::AsRawHandle::as_raw_handle(&handle),
+                    )
+                    .map_or(80, |(terminal_size::Width(w), _)| w as usize)
                 }
-                #[cfg(target_os = "unix")]
+                #[cfg(any(target_os = "macos", target_os = "linux"))]
                 {
-                    todo!()
+                    terminal_size::terminal_size_using_fd(std::os::unix::io::AsRawFd::as_raw_fd(
+                        &handle,
+                    ))
+                    .map_or(80, |(terminal_size::Width(w), _)| w as usize)
                 }
-            })
-            .map_or(80, |(terminal_size::Width(w), _)| w as usize);
+            };
 
             // count how many numbers can be put on a line
             let mut acc = pad_num + pad_bits + 1;
